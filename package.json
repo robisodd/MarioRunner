@@ -1,0 +1,47 @@
+{
+    "author": "robisodd",
+    "dependencies": {},
+    "keywords": [],
+    "name": "runner",
+    "pebble": {
+        "capabilities": [
+            ""
+        ],
+        "displayName": "Runner",
+        "enableMultiJS": true,
+        "messageKeys": {},
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/Font8.png",
+                    "name": "FONT8",
+                    "targetPlatforms": null,
+                    "type": "pbi"
+                },
+                {
+                    "file": "images/sprites-mask.png",
+                    "name": "SPRITES_MASK",
+                    "targetPlatforms": null,
+                    "type": "pbi"
+                },
+                {
+                    "file": "images/sprites.png",
+                    "name": "SPRITES",
+                    "targetPlatforms": null,
+                    "type": "pbi"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt"
+        ],
+        "uuid": "99635197-1e12-4085-b497-97f7c90e0942",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "0.3.0"
+}
