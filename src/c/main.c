@@ -1,17 +1,101 @@
-#include "pebble.h"
-#include "graphics.h"
+/*
+
+Pebble App Store    UUID: 99635197-1e12-4085-b497-97f7c90e0942
+CloudPebble Testing UUID: 99635197-1e12-4085-b497-97f7c90e0943
+
+
+
+
+
+
+*/
+#include "main.h"
 Window *main_window;
 Layer *root_layer, *message_layer;
 AppTimer *looptimer;
 
 // .h stuff
 #define UPDATE_MS 50 // Refresh rate in milliseconds
-//#define screen8   ((uint8_t*)framebuffer->addr)
-//#define screen16 ((uint16_t*)framebuffer->addr)
-//#define screen32 ((uint32_t*)framebuffer->addr)
 static void main_loop(void *data);  // need to define this here so up button can pause
 
 // end .h stuff
+
+#define COLOR_SKY 0b11011011
+
+#define SPRITE_POS_EMPTY 0
+
+#define SPRITE_POS_BLOCK_FLOOR 3
+#define SPRITE_POS_BLOCK_BRICK 50
+#define SPRITE_POS_BLOCK_Q     5
+#define SPRITE_POS_BLOCK_METAL 55
+#define SPRITE_POS_BLOCK_SQUARE 59
+#define SPRITE_POS_BLOCK_CLOUD 60
+
+#define SPRITE_POS_COIN 32
+
+#define SPRITE_POS_MARIO_STAND 40
+#define SPRITE_POS_MARIO_WALK1 41
+#define SPRITE_POS_MARIO_WALK2 42
+#define SPRITE_POS_MARIO_WALK3 90
+#define SPRITE_POS_MARIO_JUMP  91
+#define SPRITE_POS_MARIO_DEAD  92
+
+#define RUNNER_FRAME_COUNT 3
+
+#define SPRITE_POS_BLOCK_SPIKES_UP 2
+#define SPRITE_POS_BLOCK_SPIKES_DOWN 52
+
+#define SPRITE_POS_BLOCK_BRIDGE_RAILS 1
+#define SPRITE_POS_BLOCK_BRIDGE 51
+#define SPRITE_POS_BLOCK_WATER 53
+
+#define SPRITE_POS_BLOCK_PIPE_TOP_L    6
+#define SPRITE_POS_BLOCK_PIPE_TOP_R    7
+#define SPRITE_POS_BLOCK_PIPE_SHAFT_L 56
+#define SPRITE_POS_BLOCK_PIPE_SHAFT_R 57
+
+
+#define SPRITE_POS_BG_FENCE 65
+#define SPRITE_POS_BG_TREE_SHAFT 66
+#define SPRITE_POS_BG_TREE_TOP_SMALL 16
+#define SPRITE_POS_BG_TREE_TOP_LARGE_T 17
+#define SPRITE_POS_BG_TREE_TOP_LARGE_B 67
+
+#define SPRITE_POS_BG_CLOUD_UL 18
+#define SPRITE_POS_BG_CLOUD_UM 19
+#define SPRITE_POS_BG_CLOUD_UR 20
+#define SPRITE_POS_BG_CLOUD_BL 68
+#define SPRITE_POS_BG_CLOUD_BM 69
+#define SPRITE_POS_BG_CLOUD_BR 70
+
+
+#define RAND_BLOCK_COUNT 5
+// uint8_t rand_block[RAND_BLOCK_COUNT] = {
+//   SPRITE_POS_BG_FENCE,
+//   SPRITE_POS_BLOCK_CLOUD,
+//   SPRITE_POS_BLOCK_Q,
+//   SPRITE_POS_BLOCK_METAL,
+  
+// };
+uint8_t rand_block[RAND_BLOCK_COUNT] = {
+  SPRITE_POS_BLOCK_BRICK,
+  SPRITE_POS_BLOCK_CLOUD,
+  SPRITE_POS_BLOCK_Q,
+  SPRITE_POS_BLOCK_METAL,
+  SPRITE_POS_BLOCK_SQUARE
+};
+
+
+#define SOLID_BLOCK_COUNT 6
+uint8_t solid_block[SOLID_BLOCK_COUNT] = {
+  SPRITE_POS_BLOCK_FLOOR,
+  SPRITE_POS_BLOCK_BRICK,
+  SPRITE_POS_BLOCK_Q,
+  SPRITE_POS_BLOCK_METAL,
+  SPRITE_POS_BLOCK_SQUARE,
+  SPRITE_POS_BLOCK_CLOUD
+};
+// TODO: replace solid_block[] with: bool is_solid[TOTAL_NUMBER_OF_TYPES_OF_BLOCKS]
 
 
 //--------------------------------------------------------------------------------------------------------------------------//
@@ -33,7 +117,7 @@ uint8_t jumpmode; // 0=on ground, button let go, ready to jump, 1=jumping button
 uint8_t runmode; // 0=running, 1=stopped (TODO: Mix with JUMPMODE and ALIVE to make PlayerState)
 bool    alive;
 uint8_t coinanimation;
-
+uint8_t runner_animation[RUNNER_FRAME_COUNT] = {SPRITE_POS_MARIO_WALK1, SPRITE_POS_MARIO_WALK2, SPRITE_POS_MARIO_WALK3};
 int addInt(int n, int m) {
     return n+m;
 }
@@ -79,8 +163,8 @@ static bool dn_button_previous  = false; // Whether Pebble's  Down  button is he
 // }
   
 static void up_push_in_handler(ClickRecognizerRef recognizer, void *context) {
-  up_button_depressed = true;
-  paused=!paused;
+  //up_button_depressed = true;
+  //paused=!paused;
   if(paused)
     app_timer_cancel(looptimer);
   else
@@ -107,7 +191,6 @@ static void remove_message(void *data) {
   main_loop(NULL);                   // start the action!
 }
 
-
 static void init_round(void *data) {
   offset=0;
   runner_frame=0;
@@ -122,12 +205,16 @@ static void init_round(void *data) {
 
   // design level?
   //rand() % 3 == 0 ? 1 : 0;
-  for(uint16_t i=0; i<256; i++) map[i] = 0; // Clear map
-  for(uint16_t i=0; i<16; i++) map[i] = 1;  // Bottom path
-  for(uint16_t i=0; i<16; i++) map[(16*15) + i] = 9;//7  // Hidden ceiling/bottom of pit
+  for(uint16_t i=0; i<256; i++) map[i] = SPRITE_POS_EMPTY; // Clear map
+  
+  for(uint16_t i=0; i<16; i++) map[i] = SPRITE_POS_BLOCK_FLOOR;  // Bottom path
+  for(uint16_t i=0; i<16; i++) map[(16*15) + i] = SPRITE_POS_BLOCK_FLOOR;//7  // Hidden ceiling/bottom of pit
   //for(uint16_t i=18; i<16+13; i++) map[i] = 9;//1;  // 2nd Bottom path
-  map[16*3]=3;map[16*3+1]=3;
-  map[16*6 + 4]=5;map[16*6 + 5]=7;
+  map[16*3 + 1] = SPRITE_POS_BLOCK_BRICK;
+  map[16*3    ] = SPRITE_POS_BLOCK_BRICK;
+  map[16*6 + 4] = SPRITE_POS_BLOCK_Q;
+  map[16*6 + 5] = SPRITE_POS_BLOCK_METAL;
+
   
   if(lives>0)
     app_timer_register(3000, remove_message, NULL); // Show message for 3000ms, then start game
@@ -139,19 +226,42 @@ static void init_round(void *data) {
 
 static void death_timer_callback(void *data) {
   if(paused) {
-    looptimer=app_timer_register(UPDATE_MS, death_timer_callback, NULL); // Schedule a callback to continue animation
-  } else {
+    looptimer = app_timer_register(UPDATE_MS, death_timer_callback, NULL); // Schedule a callback to continue animation
+    return;
+  }
+  
   runner_y += yvel;  // move y position
   yvel-=2;           // Death Gravity
   if((int8_t)yvel<-10) yvel=246; // terminal velocity (int -10 = uint 246)
-  
+
   layer_mark_dirty(root_layer);      // Schedule redraw of screen
   if(runner_y<240)                                                       // if not below bottom of screen
     looptimer=app_timer_register(UPDATE_MS, death_timer_callback, NULL); // Schedule a callback to continue animation
   else    
     looptimer=app_timer_register(1000, init_round, NULL);  // Wait a full second, then start over
-  }
 }
+
+
+// TODO:
+//   replace solid_block[] with: bool is_solid[TOTAL_NUMBER_OF_TYPES_OF_BLOCKS]
+//   which removes these collision() functions and runs much faster
+bool collision(uint8_t block1, uint8_t block2) {
+  for(uint8_t i = 0; i < SOLID_BLOCK_COUNT; ++i) {
+    if(block1==solid_block[i] || block2==solid_block[i])
+      return true;
+  }
+  return false;
+}
+
+bool collision3(uint8_t block1, uint8_t block2, uint8_t block3) {
+  for(uint8_t i = 0; i < SOLID_BLOCK_COUNT; ++i) {
+    if(block1==solid_block[i] || block2==solid_block[i] || block3==solid_block[i])
+      return true;
+  }
+  return false;
+}
+
+
 
 
 uint8_t Q1, Q2;
@@ -170,8 +280,19 @@ static void main_loop(void *data) {
   runmode=0; // mode=running (unless hit a block sideways)
   occupied1=map[(((runner_x+14+offset)>>4)&15) + ((runner_y-13)&240)]; // square occupied by bottom-right area
   occupied2=map[(((runner_x+14+offset)>>4)&15) + ((runner_y- 2)&240)]; // square occupied by upper-right
-  if(occupied1==1 || occupied1==3 || occupied1==5 || occupied1==7 || occupied2==1 || occupied2==3 || occupied2==5 || occupied2==7) {
+  
+//   if(occupied1==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied1==SPRITE_POS_BLOCK_BRICK ||
+//      occupied1==SPRITE_POS_BLOCK_Q ||
+//      occupied1==SPRITE_POS_BLOCK_METAL ||
+//      occupied2==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied2==SPRITE_POS_BLOCK_BRICK ||
+//      occupied2==SPRITE_POS_BLOCK_Q ||
+//      occupied2==SPRITE_POS_BLOCK_METAL
+  //     ) {
+  if (collision(occupied1, occupied2)) {
     runmode=1; // not running
+    
     //runner_x -= 6; // -6 instead of -5 cause of catching-up below
     runner_x -= (runner_x+14+offset)&15; // push player to against block (+15 instead of +16 so he's kinda inside it)
     if(runner_x<(48-10)) { // hit left wall
@@ -195,7 +316,16 @@ static void main_loop(void *data) {
     } else {
       occupied1=map[(((runner_x+2+offset)>>4)&15) + ((runner_y-16)&240)]; // bottom left area of player
       occupied2=map[(((runner_x+13+offset)>>4)&15) + ((runner_y-16)&240)]; // bottom right area of player
-      if(occupied1==1 || occupied1==3 || occupied1==5 || occupied1==7 || occupied2==1 || occupied2==3 || occupied2==5 || occupied2==7) {
+//   if(occupied1==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied1==SPRITE_POS_BLOCK_BRICK ||
+//      occupied1==SPRITE_POS_BLOCK_Q ||
+//      occupied1==SPRITE_POS_BLOCK_METAL ||
+//      occupied2==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied2==SPRITE_POS_BLOCK_BRICK ||
+//      occupied2==SPRITE_POS_BLOCK_Q ||
+//      occupied2==SPRITE_POS_BLOCK_METAL
+//     ) {
+      if (collision(occupied1, occupied2)) {
         runner_y=((runner_y-16)&240)+16+15; //+16+15: 16 to put on top of block and 15 for top of head
         yvel=0; // standing on top of a block
         jumpmode=0;  // not jumping (running animation)
@@ -210,7 +340,16 @@ static void main_loop(void *data) {
     //occupied=(((runner_x+8+offset)>>4)&15) + ((runner_y+yvel)&240);
     occupied1=map[(((runner_x+ 2+offset)>>4)&15) + (runner_y&240)];
     occupied2=map[(((runner_x+13+offset)>>4)&15) + (runner_y&240)];
-    if(occupied1==1 || occupied1==3 || occupied1==5 || occupied1==7 || occupied2==1 || occupied2==3 || occupied2==5 || occupied2==7) {
+//   if(occupied1==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied1==SPRITE_POS_BLOCK_BRICK ||
+//      occupied1==SPRITE_POS_BLOCK_Q ||
+//      occupied1==SPRITE_POS_BLOCK_METAL ||
+//      occupied2==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied2==SPRITE_POS_BLOCK_BRICK ||
+//      occupied2==SPRITE_POS_BLOCK_Q ||
+//      occupied2==SPRITE_POS_BLOCK_METAL
+//     ) {
+    if (collision(occupied1, occupied2)) {
       runner_y=((runner_y)&240)-1; //+16+15: 16 to put on top of block and 15 for top of head
       yvel=0; // block stops jump
     }
@@ -218,8 +357,8 @@ static void main_loop(void *data) {
 
   // See what ran into
   occupied1=(((runner_x+8+offset)>>4)&15) + ((runner_y-8)&240); // center of player
-  if(map[occupied1]==9) { // if player occupies same spot as a coin
-    map[occupied1]=0;
+  if(map[occupied1]==SPRITE_POS_COIN) { // if player occupies same spot as a coin
+    map[occupied1]=SPRITE_POS_EMPTY;
     coins++;
     score+=100;
     vibes_cancel(); vibes_enqueue_custom_pattern((VibePattern){.durations = (uint32_t []){20}, .num_segments = 1});  // pulse with each coin
@@ -245,7 +384,16 @@ static void main_loop(void *data) {
   if(dn_button_depressed) {  // if jump button is being pushed
     if(!dn_button_previous) { // if it was JUST pushed (try to jump)
 //occupied=map[] <-- put the two lines above Q1 Q2 here
-      if(occupied1==1 || occupied1==3 || occupied1==5 || occupied1==7 || occupied2==1 || occupied2==3 || occupied2==5 || occupied2==7) {
+//   if(occupied1==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied1==SPRITE_POS_BLOCK_BRICK ||
+//      occupied1==SPRITE_POS_BLOCK_Q ||
+//      occupied1==SPRITE_POS_BLOCK_METAL ||
+//      occupied2==SPRITE_POS_BLOCK_FLOOR ||
+//      occupied2==SPRITE_POS_BLOCK_BRICK ||
+//      occupied2==SPRITE_POS_BLOCK_Q ||
+//      occupied2==SPRITE_POS_BLOCK_METAL
+//     ) {
+      if (collision(occupied1, occupied2)) {
         jumpmode=1; // playermode = jumping
         yvel=11+4;    // y velocity of jumping (note: adds 2 below)
       }
@@ -262,17 +410,29 @@ static void main_loop(void *data) {
   countdown -= 1; //if(countdown==0) countdown=400*8;  // timer
   if(countdown<8) alive=false;  // timer runs out! (technically if timer>>3==0)
   coinanimation++;
-  runner_frame = (runner_frame+1) % 3;  // next runner frame (whether running or not)
+  runner_frame = (runner_frame+1) % RUNNER_FRAME_COUNT;  // next runner frame (whether running or not)
   
 
   
   // Generate stuff on the right
-  map[(16*5) + ((15+(offset>>4)) &15)] = rand()%3==0 ? 0 : ((rand()%4)*2)+1;  // 2 and 13 (L & R) not visible, 3 and 12 partially visible
-  map[((15+(offset>>4))&15)]=(rand()%10==0) ? 0 : 1;  // random pit
-  if(rand()%10==0) map[(16*1) + ((15+(offset>>4))&15)]=9;  // random coin
+  //map[(16*5) + ((15+(offset>>4)) &15)] = rand()%3==0 ? 0 : ((rand()%4)*2)+1;  // 2 and 13 (L & R) not visible, 3 and 12 partially visible
   
+  // 2 and 13 (L & R) not visible, 3 and 12 partially visible
+  //   map[(16*5) + ((15+(offset>>4)) &15)] =
+  //     rand()%3==0 ? SPRITE_POS_EMPTY : SPRITE_POS_BLOCK_BRICK;
+  
+  map[(16*5) + ((15+(offset>>4)) &15)] =
+    rand()%3==0 ? SPRITE_POS_EMPTY : rand_block[rand()%RAND_BLOCK_COUNT];
+  
+  //   map[((15+(offset>>4))&15)] =
+  //     rand()%10==0 ? SPRITE_POS_EMPTY : SPRITE_POS_BLOCK_FLOOR;  // random pit
+  map[((15+(offset>>4))&15)] =
+    rand()%10==0 ? SPRITE_POS_BLOCK_WATER : SPRITE_POS_BLOCK_FLOOR;  // random water
+  
+  if(rand()%10==0) map[(16*1) + ((15+(offset>>4))&15)] = SPRITE_POS_COIN;  // random coin
   
   layer_mark_dirty(root_layer);                    // Schedule redraw of screen
+  
   if(alive) {
     if(!paused)
       looptimer=app_timer_register(UPDATE_MS, main_loop, NULL); // Schedule a callback
@@ -283,6 +443,7 @@ static void main_loop(void *data) {
   }
 }
 
+
 // ------------------------------------------------------------------------ //
 //  Layer Drawing Functions
 // ------------------------------------------------------------------------ //
@@ -292,17 +453,18 @@ void message_layer_update(Layer *me, GContext *ctx) {
   uint32_t *screen32 = (uint32_t*)*(uintptr_t*)ctx;
   //GBitmap* framebuffer = graphics_capture_frame_buffer(ctx);
   //if(framebuffer) {
+  
 #ifdef PBL_PLATFORM_APLITE
     for(int16_t i=(16*5); i<168*5; i++) screen32[i] = ~0; // blank screen (from status bar down)
 #elif PBL_PLATFORM_BASALT
     for(int16_t i=(16*144); i<168*144; i++) screen8[i] = 0b11111111; // blank screen
 #endif
 
-    draw_font8_text(screen8, 0, 0, "MARIO         TIME\0");
+    draw_font8_text(screen8, 0, 0, " MARIO        TIME\0");
     snprintf(text, sizeof(text), "%06ld  %c*%02d      ", (long)score%1000000, 4, (int)coins);
     draw_font8_text(screen8, 0, 8, text);
 
-    if(lives>0) {
+    if (lives > 0) {
       snprintf(text, sizeof(text), "LIVES * %d", lives);
       draw_font8_text(screen8, 4, 88, text);
     } else {
@@ -320,34 +482,34 @@ void message_layer_update(Layer *me, GContext *ctx) {
 void root_layer_update(Layer *me, GContext *ctx) {
   static char text[40];  //Buffer to hold text
    uint8_t *screen8  =  (uint8_t*)*(uintptr_t*)ctx;
-  uint32_t *screen32 = (uint32_t*)*(uintptr_t*)ctx;
-  uint16_t *screen16 = (uint16_t*)*(uintptr_t*)ctx;
+//   uint32_t *screen32 = (uint32_t*)*(uintptr_t*)ctx;
+  //uint16_t *screen16 = (uint16_t*)*(uintptr_t*)ctx;
   
 #ifdef PBL_PLATFORM_APLITE
-    for(int16_t i=(16*5); i<168*5; i++) screen32[i] = ~0; // blank screen (from status bar down)
+//     for(int16_t i=(16*5); i<168*5; i++) screen32[i] = ~0; // blank screen (from status bar down)
 #elif PBL_PLATFORM_BASALT
-    for(int16_t i=(16*144); i<168*144; i++) screen8[i] = 0b11111111; // blank screen
+    for(int16_t i=(16*144); i<168*144; i++) screen8[i] = COLOR_SKY; // blank screen
 #endif
     
     for(uint8_t y=0; y<10; y++)
       for(uint8_t x=3; x<13; x++)
          if(map[(y*16) + ((x+(offset>>4))&15)]>0)
-          draw_block16(screen16, (x-4)*16 + (16-(offset&15)), 168-(16*(y+1)), map[(y*16) + ((x+(offset>>4))&15)]);
+          draw_sprite16(screen8, (x-4)*16 + (16-(offset&15)), 168-(16*(y+1)), map[(y*16) + ((x+(offset>>4))&15)]);
     
-    //0,2,4=running, 6 = standing, 8=jumping, 10=dead
-     draw_sprite16(screen16, runner_x-48, 168-runner_y, alive ? (jumpmode==0 ? (runmode==0 ? runner_frame<<1 : 6) : 8) : 10);
+      draw_sprite16(screen8, runner_x-48, 168-runner_y, alive ? (jumpmode==0 ? (runmode==0 ? runner_animation[runner_frame] : SPRITE_POS_MARIO_STAND) : SPRITE_POS_MARIO_JUMP) : SPRITE_POS_MARIO_DEAD);
 
     if(countdown < 8)
       draw_font8_text(screen8, 5, 88, "TIME UP!");
     
-    draw_font8_text(screen8, 0, 0, "MARIO         TIME\0");
-    snprintf(text, sizeof(text), "%06ld  %c*%02d   %03d", (long)score%1000000, ((coinanimation>>2)&3)+4, coins, countdown>>3);
+    draw_font8_text(screen8, 0, 0, " MARIO        TIME\0");
+    snprintf(text, sizeof(text),   "%06ld  %c*%02d   %03d", (long)score%1000000, ((coinanimation>>2)&3)+4, coins, countdown>>3);
     draw_font8_text(screen8, 0, 8, text);
   
 #ifdef PBL_PLATFORM_APLITE
-    for(int16_t i=17*5; i<18*5; i++) screen32[i] = 0; // Black horizontal line
+//     for(int16_t i=17*5; i<18*5; i++) screen32[i] = 0; // Black horizontal line
 #elif PBL_PLATFORM_BASALT
-    for(int16_t i=17*168; i<18*168; i++) screen8[i] = 0b11000000; // Black horizontal line
+    for(int16_t i=16*144; i<17*144; i++) screen8[i] = 0b11111111; // White horizontal line
+    for(int16_t i=17*144; i<18*144; i++) screen8[i] = 0b11000000; // Black horizontal line
 #endif
 
   
@@ -429,6 +591,12 @@ Future Ideas:
   Staircase
   Pits
   Waaay later: Underground level with easy ceiling but some holes and lifts, like level 1-2
+
+
+
+
+
+
 
 ================================================================================
 This is the layout of the whole world.

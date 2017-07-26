@@ -4,30 +4,23 @@
     "keywords": [],
     "name": "runner",
     "pebble": {
-        "capabilities": [
-            ""
-        ],
         "displayName": "Runner",
         "enableMultiJS": true,
-        "messageKeys": {},
+        "messageKeys": [],
         "projectType": "native",
         "resources": {
             "media": [
                 {
+                    "file": "images/spritesheet.png",
+                    "memoryFormat": "8Bit",
+                    "name": "SPRITESHEET",
+                    "storageFormat": "png",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
                     "file": "images/Font8.png",
                     "name": "FONT8",
-                    "targetPlatforms": null,
-                    "type": "pbi"
-                },
-                {
-                    "file": "images/sprites-mask.png",
-                    "name": "SPRITES_MASK",
-                    "targetPlatforms": null,
-                    "type": "pbi"
-                },
-                {
-                    "file": "images/sprites.png",
-                    "name": "SPRITES",
                     "targetPlatforms": null,
                     "type": "pbi"
                 }
@@ -35,13 +28,12 @@
         },
         "sdkVersion": "3",
         "targetPlatforms": [
-            "aplite",
             "basalt"
         ],
-        "uuid": "99635197-1e12-4085-b497-97f7c90e0942",
+        "uuid": "99635197-1e12-4085-b497-97f7c90e0943",
         "watchapp": {
             "watchface": false
         }
     },
-    "version": "0.3.0"
+    "version": "0.4.0"
 }
