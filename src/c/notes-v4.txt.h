@@ -145,5 +145,81 @@ But heights can vary:
      Each uint8 of the array will point to another uint8 array of [10, x]
        10 being the 10 uint8 blocks for that column
        x being how many unique columns
+Notes from main.c
+
+=================================================================================
+  More Notes 2017/12/19
+=================================================================================
+/*
+Ok, so PNG might not be the best idea.  Maybe for website loading, I dunno, but that can all be done in JS.
+Storing in the watch will be raw blob datas
+
+Blob format in chunks (like PNG does)
+Maybe letter format like SVG
+[LEVEL]
+  Denotes beginning of level
+  defines background, tileset, colorset, etc
+  can ocurr in the middle of a level which changes the layout as you cross the threshold
+[BLOCK]
+  defines X,Y position, type and Length
+[SECTOR]
+  defines X position for threshold
+[STAIR/PLATFORM]
+  X, Y, W, I
+  W denotes how wide to make it
+  I denotes incremental,  I=0 makes a platform, -1=decline +1=incline stairs
+[PIPE]
+  X, Y: Upper-left corner of pipe, goes to bottom of screen
+
+[END]
+  Denotes successful non-corrupt EOF
+  Can have new [LEVEL] after for multiple levels in one file
+Each has to ocurr in order of X position, no order for Y
+
+
+https://datacrystal.romhacking.net/wiki/Super_Mario_Bros.:RAM_map
+
+/*
+Future Ideas:
+  Disappearing Blocks (like megaman)
+  Falling Blocks (like Mario 3's "donut blocks")
+  Stars (temporary invincibility)
+  Fireballs (shooting)
+  Enemies
+  Pipes do nothing (except plants)
+  Staircase
+  Pits
+  Waaay later: Underground level with easy ceiling but some holes and lifts, like level 1-2
+
+
+
+
+
+
+
+================================================================================
+This is the layout of the whole world.
+  - means not visible (out of screen bounds, but still exists)
+  o means a tile on the screen
+(Offset>>4 + x)&15 + y*16 = block on screen
+F----------------
+E----------------
+D----------------
+C----------------
+B----------------
+A----------------
+9---oooooooooo---
+8---oooooooooo---
+7---oooooooooo---
+6---oooooooooo---
+5---oooooooooo---
+4---oooooooooo---
+3---oooooooooo---
+2---oooooooooo---
+1---oooooooooo---
+0---oooooooooo---
+ 0123456789ABCDEF
+ ================================================================================
+*/
 #endif
   
